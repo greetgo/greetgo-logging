@@ -7,6 +7,7 @@ import kz.greetgo.log.core.routing.LogRouting;
 import kz.greetgo.log.core.routing.LogRoutingBuilder;
 import kz.greetgo.log.core.util.ByteSize;
 import kz.greetgo.log.core.util.SizeUnit;
+import kz.greetgo.log.test_common.Connects;
 import kz.greetgo.log.test_common.TestLocker;
 import org.testng.annotations.Test;
 
@@ -17,8 +18,13 @@ public class ZookeeperConfigFileFactoryTest {
 
   @Test
   public void runReactor() {
-    var configFileFactory = new ZookeeperConfigFileFactory(
-      "/tests/ZookeeperConfigFileFactoryTest/01", () -> "localhost:2181", () -> 3000);
+
+    ZookeeperConnectParams connectParams = new ZookeeperConnectParams()
+      .connectStr(Connects::toZookeeper)
+      .connectTimeoutMillis(10_000);
+
+    var configFileFactory = new ZookeeperConfigFileFactory(connectParams,
+                                                           "/tests/ZookeeperConfigFileFactoryTest/01");
 
     ConfigFile logConfig = configFileFactory.getOrCreate("log-config.txt");
     ConfigFile logConfigError = configFileFactory.getOrCreate("log-config.txt.errors.txt");

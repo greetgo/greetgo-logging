@@ -1,0 +1,38 @@
+version: "2.3"
+services:
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:5.5.0
+    mem_limit: 200M
+    restart: always
+    volumes:
+      - "./volumes/zookeeper/data:/var/lib/zookeeper/data"
+      - "./volumes/zookeeper/log:/var/lib/zookeeper/log"
+    ports:
+      - "19730:2181"
+    environment:
+      ZOOKEEPER_SERVER_ID: "1"
+      ZOOKEEPER_CLIENT_PORT: "2181"
+
+  zoo-navigator-web:
+    image: elkozmon/zoonavigator-web:0.6.2
+    mem_limit: 100M
+    container_name: greetgo-logging-zoo-navigator-web
+    restart: always
+    ports:
+      - "19731:9001"
+    environment:
+      WEB_HTTP_PORT: 9001
+      API_HOST: "zoo-navigator-api"
+      API_PORT: 9082
+      AUTO_CONNECT_CONNECTION_STRING: zookeeper:2181
+    depends_on:
+      - zoo-navigator-api
+
+  zoo-navigator-api:
+    image: elkozmon/zoonavigator-api:0.6.2
+    mem_limit: 300M
+    container_name: greetgo-logging-zoo-navigator-api
+    restart: always
+    environment:
+      API_HTTP_PORT: 9082

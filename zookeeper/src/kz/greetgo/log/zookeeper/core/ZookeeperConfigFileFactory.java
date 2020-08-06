@@ -6,8 +6,6 @@ import kz.greetgo.log.zookeeper.config.EventConfigStorageZooKeeper;
 import lombok.NonNull;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.IntSupplier;
-import java.util.function.Supplier;
 
 public final class ZookeeperConfigFileFactory implements AutoCloseable {
 
@@ -17,10 +15,9 @@ public final class ZookeeperConfigFileFactory implements AutoCloseable {
 
   private final EventConfigStorageZooKeeper storage;
 
-  public ZookeeperConfigFileFactory(String rootPath,
-                                    @NonNull Supplier<String> zookeeperServers,
-                                    @NonNull IntSupplier sessionTimeout) {
-    storage = new EventConfigStorageZooKeeper(rootPath, zookeeperServers, sessionTimeout);
+  public ZookeeperConfigFileFactory(@NonNull ZookeeperConnectParams connectParams,
+                                    String rootPath) {
+    storage = new EventConfigStorageZooKeeper(rootPath, connectParams);
   }
 
   private final ConcurrentHashMap<String, ConfigFile> pathToConfigFileMap = new ConcurrentHashMap<>();

@@ -1,10 +1,9 @@
 package kz.greetgo.log.zookeeper.config;
 
-import org.apache.curator.RetryPolicy;
+import kz.greetgo.log.zookeeper.core.ZookeeperConnectParams;
+import lombok.NonNull;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.api.CuratorWatcher;
-import org.apache.curator.retry.RetryNTimes;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -19,23 +18,19 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.IntSupplier;
-import java.util.function.Supplier;
 
 public class EventConfigStorageZooKeeper extends EventConfigStorageAbstract implements AutoCloseable {
 
-  private final Supplier<String> zookeeperServers;
+  private final @NonNull ZookeeperConnectParams connectParams;
   private final String rootPath;
-  private final IntSupplier sessionTimeout;
 
   private final AtomicReference<ZooKeeper> zkHolder = new AtomicReference<>(null);
 
   private final AtomicReference<CuratorFramework> clientHolder = new AtomicReference<>(null);
 
-  public EventConfigStorageZooKeeper(String rootPath, Supplier<String> zookeeperServers, IntSupplier sessionTimeout) {
-    this.zookeeperServers = zookeeperServers;
+  public EventConfigStorageZooKeeper(String rootPath, @NonNull ZookeeperConnectParams connectParams) {
+    this.connectParams = connectParams;
     this.rootPath = rootPath;
-    this.sessionTimeout = sessionTimeout;
   }
 
   public void reset() {
@@ -65,18 +60,9 @@ public class EventConfigStorageZooKeeper extends EventConfigStorageAbstract impl
   }
 
   private CuratorFramework createClient() {
-    int sleepMsBetweenRetries = 100;
-    int maxRetries = 3;
-    RetryPolicy retryPolicy = new RetryNTimes(
-      maxRetries, sleepMsBetweenRetries);
-
-    CuratorFramework client = CuratorFrameworkFactory
-      .newClient(zookeeperServers.get(), sessionTimeout.getAsInt(), 25000, retryPolicy);
-
+    CuratorFramework client = connectParams.createClient();
     client.start();
-
     prepareWatchers(client);
-
     return client;
   }
 
