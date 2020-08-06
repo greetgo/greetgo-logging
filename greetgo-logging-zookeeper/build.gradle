@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-  implementation project(':greetgo-structure')
+  implementation project(':greetgo-logging-structure')
 
   compileOnly "org.projectlombok:lombok:$lombokVersion"
   annotationProcessor "org.projectlombok:lombok:$lombokVersion"
