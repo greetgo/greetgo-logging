@@ -1,3 +1,8 @@
+plugins {
+  id "kz.greetgo.upload-to-maven"
+  id "kz.greetgo.upload-to-gg-repo"
+}
+
 dependencies {
   implementation project(':structure')
 
@@ -24,4 +29,21 @@ dependencies {
 
   testImplementation project(':test-common')
 
+  //testImplementation "ch.qos.logback:logback-classic:$logbackVersion"
+  //testImplementation "org.slf4j:slf4j-api:$slf4jApiVersion"
+
+}
+
+uploadToMavenCentral {
+  description = 'Logging mechanism using in greetgo!'
+  url = 'https://github.com/greetgo/greetgo-logging'
+  scm {
+    url = 'https://github.com/greetgo/greetgo-logging.git'
+  }
+  developer {
+    id = 'pompei'
+    //noinspection SpellCheckingInspection
+    name = 'Evgenij Kolpakov'
+    email = 'ekolpakov@greet-go.kz'
+  }
 }
