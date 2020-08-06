@@ -1,0 +1,13 @@
+
+  left sub line
+  another left sub line
+
+destination_to to_file
+  type rolling_file
+  file_size 10M
+  files_count 10
+
+-destination_to to_file
+  type rolling_file
+  file_size 100M
+  files_count 10

@@ -1,0 +1,10 @@
+dependencies {
+
+  compileOnly "org.projectlombok:lombok:$lombokVersion"
+  annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+  compile "org.jetbrains:annotations:$jetbrainsAnnotationsVersion"
+
+  testImplementation project(':test-common')
+
+}

@@ -1,0 +1,27 @@
+dependencies {
+  implementation project(':structure')
+
+  compileOnly "org.projectlombok:lombok:$lombokVersion"
+  annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+  testCompile "kz.greetgo.util:greetgo.util:$greetgoUtilVersion"
+
+  compileOnly('org.apache.zookeeper:zookeeper:3.4.13') {
+    exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    exclude group: 'log4j', module: 'log4j'
+  }
+  testCompile('org.apache.zookeeper:zookeeper:3.4.13') {
+    exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    exclude group: 'log4j', module: 'log4j'
+  }
+
+  compileOnly("org.apache.curator:curator-x-async:4.0.1") {
+    exclude group: "org.apache.zookeeper", module: "zookeeper"
+  }
+  testCompile("org.apache.curator:curator-x-async:4.0.1") {
+    exclude group: "org.apache.zookeeper", module: "zookeeper"
+  }
+
+  testImplementation project(':test-common')
+
+}

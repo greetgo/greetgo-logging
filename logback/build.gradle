@@ -1,0 +1,12 @@
+dependencies {
+  implementation project(':structure')
+
+  compileOnly "ch.qos.logback:logback-classic:$logbackVersion"
+  testImplementation "ch.qos.logback:logback-classic:$logbackVersion"
+
+  compileOnly "org.slf4j:slf4j-api:$slf4jApiVersion"
+  testImplementation "org.slf4j:slf4j-api:$slf4jApiVersion"
+
+  testCompile "kz.greetgo.util:greetgo.util:$greetgoUtilVersion"
+
+}

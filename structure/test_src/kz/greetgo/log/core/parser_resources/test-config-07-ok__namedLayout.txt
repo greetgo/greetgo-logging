@@ -1,0 +1,14 @@
+
+layout testLayout2
+  pattern : Hello World
+  colored_pattern : Hello Colored World
+
+destination_to to_stdout
+  type stdout
+  layout testLayout2
+
+destination CONSOLE to_stdout
+  layout testLayout2
+
+category test
+  assign_to CONSOLE

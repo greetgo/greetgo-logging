@@ -1,0 +1,72 @@
+
+destination_to to_file
+  type rolling_file
+  max_file_size 1.31M
+  files_count 17
+
+-destination_to to_file
+  type rolling_file
+  max_file_size 100M
+  files_count 10
+
+destination_to to_big_file
+  type rolling_file
+  max_file_size 1.71Gi
+  files_count 13
+
+destination_to to_stdout
+  type stdout
+
+# --
+# -- This is a STDERR destination type
+# --
+destination_to to_stderr
+  type stderr
+
+destination CONSOLE to_stdout
+  level DEBUG
+
+destination smallTraces to_big_file traces/small
+  level TRACE
+
+# --
+# -- This is the destination of BO traces
+# --
+destination boTraces to_big_file traces/bo
+  level TRACE
+
+destination server to_file server
+  level ERROR
+
+destination wow to_file wow-log
+  level ERROR
+
+category kz.greetgo.test.wow
+  level INFO
+  assign_to wow
+
+category kz.greetgo.test.super
+  level ERROR
+  assign_to wow
+  assign_to CONSOLE
+
+category SMALL_TRACE
+  level TRACE
+  assign_to smallTraces
+
+category BO_TRACE
+  level TRACE
+  assign_to boTraces
+
+root
+  level ERROR
+  assign_to server
+  assign_to CONSOLE
+
+-root
+  level INFO
+  assign_to server
+  assign_to CONSOLE
+
+layout
+  pattern asd

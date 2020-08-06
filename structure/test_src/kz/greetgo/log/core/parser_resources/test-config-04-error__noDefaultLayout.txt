@@ -1,0 +1,8 @@
+
+destination_to to_stdout
+  type stdout
+
+destination CONSOLE to_stdout
+
+category test
+  assign_to CONSOLE
