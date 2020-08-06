@@ -1,6 +1,6 @@
 rootProject.name = 'greetgo-logging'
 
-include 'structure'
-include 'logback'
-include 'zookeeper'
+include 'greetgo-structure'
+include 'greetgo-logback'
+include 'greetgo-zookeeper'
 include 'test-common'
