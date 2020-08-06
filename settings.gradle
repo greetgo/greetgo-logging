@@ -1,2 +1,6 @@
-rootProject.name = 'greetgo-hot-log-structure'
+rootProject.name = 'greetgo-logging'
 
+include 'structure'
+include 'logback'
+include 'zookeeper'
+include 'test-common'
