@@ -116,10 +116,12 @@ public class LogBackHelper {
 
   private Appender<ILoggingEvent> createAppender__stderr(Destination destination) {
 
+    PatternLayoutEncoder encoder = createEncoder(requireNonNull(destination.layout));
+
     ConsoleAppender<ILoggingEvent> consoleAppender = new ConsoleAppender<>();
     consoleAppender.setContext(context);
     consoleAppender.setName(destination.name);
-    consoleAppender.setEncoder(createConsoleEncoder());
+    consoleAppender.setEncoder(encoder);
     consoleAppender.setTarget("System.err");
     consoleAppender.setWithJansi(true);
     consoleAppender.start();
@@ -129,10 +131,12 @@ public class LogBackHelper {
 
   private Appender<ILoggingEvent> createAppender__stdout(Destination destination) {
 
+    PatternLayoutEncoder encoder = createEncoder(requireNonNull(destination.layout));
+
     ConsoleAppender<ILoggingEvent> consoleAppender = new ConsoleAppender<>();
     consoleAppender.setContext(context);
     consoleAppender.setName(destination.name);
-    consoleAppender.setEncoder(createConsoleEncoder());
+    consoleAppender.setEncoder(encoder);
     consoleAppender.setTarget("System.out");
     consoleAppender.setWithJansi(true);
     consoleAppender.start();
@@ -172,21 +176,6 @@ public class LogBackHelper {
     appender.start();
 
     return appender;
-  }
-
-  private @NotNull PatternLayoutEncoder createConsoleEncoder() {
-    var mainEncoder = new PatternLayoutEncoder();
-    mainEncoder.setContext(context);
-    if (colored) {
-      //noinspection SpellCheckingInspection
-      mainEncoder.setPattern("%green(%d{yyyy-MM-dd'T'HH:mm:ss.SSS})"
-                               + " %cyan(%32.32logger{15}) %highlight(%-5level) %msg%n");
-    } else {
-      //noinspection SpellCheckingInspection
-      mainEncoder.setPattern("%d{yyyy-MM-dd'T'HH:mm:ss.SSS} %32.32logger{15} %-5level %msg%n");
-    }
-    mainEncoder.start();
-    return mainEncoder;
   }
 
   private @NotNull PatternLayoutEncoder createEncoder(Layout layout) {

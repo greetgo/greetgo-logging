@@ -21,6 +21,9 @@ public class LogBackHelperTest {
     routing.layoutDefault()
            .pattern(" %d{yyyy-MM-dd'T'HH:mm:ss.SSS} %32.32logger{15} Q%mdc{LID} %-5level %msg%n");
 
+    routing.layout("asd")
+           .pattern(" ASD %msg%n");
+
     routing.destinationTo("to_file")
            .rollingFile()
            .maxFileSize("1k")
@@ -31,12 +34,20 @@ public class LogBackHelperTest {
     routing.destination("boTrace", "to_file", "traces/bo")
            .level(Level.TRACE);
 
+    routing.destinationTo("to_stdout")
+           //.layout("asd")
+           .stdout();
+    routing.destination("CONSOLE", "to_stdout");
+
     routing.category("SMALL_TRACE")
            .level(Level.TRACE)
-           .assignTo("smallTrace");
+           .assignTo("smallTrace")
+           .assignTo("CONSOLE")
+    ;
     routing.category("BO_TRACE")
            .level(boTraceEnabled ? Level.TRACE : Level.OFF)
            .assignTo("boTrace");
+
 
     return routing.build();
   }

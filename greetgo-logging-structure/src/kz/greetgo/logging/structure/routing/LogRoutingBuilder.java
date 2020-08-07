@@ -76,6 +76,13 @@ public class LogRoutingBuilder {
       return this;
     }
 
+    String layoutName;
+
+    public PrintDestinationTo layout(String layoutName) {
+      this.layoutName = layoutName;
+      return this;
+    }
+
     public void appendInstructionsTo(List<TopInstruction> instructionList) {
       var topInstruction = new TopInstruction(0, true);
       instructionList.add(topInstruction);
@@ -88,6 +95,9 @@ public class LogRoutingBuilder {
       }
       if (filesCount != null) {
         topInstruction.addSubInstruction(FILES_COUNT + ' ' + filesCount);
+      }
+      if (layoutName != null) {
+        topInstruction.addSubInstruction(LAYOUT + ' ' + layoutName);
       }
     }
   }
