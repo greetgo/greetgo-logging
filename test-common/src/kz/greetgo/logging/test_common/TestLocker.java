@@ -1,4 +1,5 @@
 package kz.greetgo.logging.test_common;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -44,5 +45,38 @@ public class TestLocker {
         return;
       }
     }
+  }
+
+  public void newButton(String lockName, Runnable run) {
+    var file = new File(dir + "/__" + lockName + "__");
+    file.getParentFile().mkdirs();
+    try {
+      file.createNewFile();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    new Thread(() -> {
+
+      while (isWorking()) {
+
+        if (!file.exists()) {
+          try {
+            file.createNewFile();
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+          run.run();
+        }
+
+        try {
+          //noinspection BusyWait
+          Thread.sleep(400);
+        } catch (InterruptedException e) {
+          return;
+        }
+      }
+
+    }).start();
   }
 }

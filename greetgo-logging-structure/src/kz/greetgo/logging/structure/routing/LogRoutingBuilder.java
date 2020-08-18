@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
@@ -32,7 +33,18 @@ import static kz.greetgo.logging.structure.model.Instr.TYPE;
 
 public class LogRoutingBuilder {
 
-  public static class PrintDestinationTo {
+  private final Object sync = new Object();
+  private final AtomicInteger changeCount = new AtomicInteger(0);
+
+  private void markChanged() {
+    changeCount.incrementAndGet();
+  }
+
+  public int changeCount() {
+    return changeCount.get();
+  }
+
+  public class PrintDestinationTo {
     private final String name;
     private String type = null;
 
@@ -41,49 +53,70 @@ public class LogRoutingBuilder {
     }
 
     public PrintDestinationTo rollingFile() {
-      type = ROLLING_FILE;
-      return this;
+      synchronized (sync) {
+        type = ROLLING_FILE;
+        markChanged();
+        return this;
+      }
     }
 
     @SuppressWarnings("UnusedReturnValue")
     public PrintDestinationTo stderr() {
-      type = STDERR;
-      return this;
+      synchronized (sync) {
+        type = STDERR;
+        markChanged();
+        return this;
+      }
     }
 
     @SuppressWarnings("UnusedReturnValue")
     public PrintDestinationTo stdout() {
-      type = STDOUT;
-      return this;
+      synchronized (sync) {
+        type = STDOUT;
+        markChanged();
+        return this;
+      }
     }
 
     private String maxFileSize = null;
 
     public PrintDestinationTo maxFileSize(ByteSize size) {
-      maxFileSize = size.displayStr();
-      return this;
+      synchronized (sync) {
+        maxFileSize = size.displayStr();
+        markChanged();
+        return this;
+      }
     }
 
     public PrintDestinationTo maxFileSize(String size) {
-      maxFileSize = requireNonNull(size);
-      return this;
+      synchronized (sync) {
+        maxFileSize = requireNonNull(size);
+        markChanged();
+        return this;
+      }
     }
 
     private String filesCount = null;
 
     public PrintDestinationTo filesCount(int filesCount) {
-      this.filesCount = "" + filesCount;
-      return this;
+      synchronized (sync) {
+        this.filesCount = "" + filesCount;
+        markChanged();
+        return this;
+      }
     }
 
     String layoutName;
 
     public PrintDestinationTo layout(String layoutName) {
-      this.layoutName = layoutName;
-      return this;
+      synchronized (sync) {
+        this.layoutName = layoutName;
+        markChanged();
+        return this;
+      }
     }
 
-    public void appendInstructionsTo(List<TopInstruction> instructionList) {
+    private void appendInstructionsTo(List<TopInstruction> instructionList) {
       var topInstruction = new TopInstruction(0, true);
       instructionList.add(topInstruction);
       topInstruction.header.parse(0, DESTINATION_TO + ' ' + name);
@@ -105,19 +138,22 @@ public class LogRoutingBuilder {
   private final List<PrintDestinationTo> printDestinationToList = new ArrayList<>();
 
   public PrintDestinationTo destinationTo(String toName) {
-    for (PrintDestinationTo x : printDestinationToList) {
-      if (Objects.equals(x.name, toName)) {
+    synchronized (sync) {
+      for (PrintDestinationTo x : printDestinationToList) {
+        if (Objects.equals(x.name, toName)) {
+          return x;
+        }
+      }
+      {
+        PrintDestinationTo x = new PrintDestinationTo(toName);
+        printDestinationToList.add(x);
+        markChanged();
         return x;
       }
     }
-    {
-      PrintDestinationTo x = new PrintDestinationTo(toName);
-      printDestinationToList.add(x);
-      return x;
-    }
   }
 
-  public static class PrintDestination {
+  public class PrintDestination {
     private final String name;
     private String destinationToName;
     private String fileNameWithSubPath;
@@ -129,18 +165,24 @@ public class LogRoutingBuilder {
     private Level level = null;
 
     public PrintDestination level(Level level) {
-      this.level = level;
-      return this;
+      synchronized (sync) {
+        this.level = level;
+        markChanged();
+        return this;
+      }
     }
 
     private String layoutName = null;
 
     public PrintDestination layout(String layoutName) {
-      this.layoutName = layoutName;
-      return this;
+      synchronized (sync) {
+        this.layoutName = layoutName;
+        markChanged();
+        return this;
+      }
     }
 
-    public void appendInstructionsTo(List<TopInstruction> instructionList) {
+    private void appendInstructionsTo(List<TopInstruction> instructionList) {
       var topInstruction = new TopInstruction(0, true);
       instructionList.add(topInstruction);
       {
@@ -170,28 +212,31 @@ public class LogRoutingBuilder {
   private final List<PrintDestination> printDestinationList = new ArrayList<>();
 
   public PrintDestination destination(String name, String destinationToName, String fileNameWithSubPath) {
-    requireNonNull(destinationToName);
-    PrintDestination printDestination = null;
-    for (PrintDestination destination : printDestinationList) {
-      if (Objects.equals(destination.name, name)) {
-        printDestination = destination;
-        break;
+    synchronized (sync) {
+      requireNonNull(destinationToName);
+      PrintDestination printDestination = null;
+      for (PrintDestination destination : printDestinationList) {
+        if (Objects.equals(destination.name, name)) {
+          printDestination = destination;
+          break;
+        }
       }
+      if (printDestination == null) {
+        printDestination = new PrintDestination(name);
+        printDestinationList.add(printDestination);
+      }
+      printDestination.destinationToName = destinationToName;
+      printDestination.fileNameWithSubPath = fileNameWithSubPath;
+      markChanged();
+      return printDestination;
     }
-    if (printDestination == null) {
-      printDestination = new PrintDestination(name);
-      printDestinationList.add(printDestination);
-    }
-    printDestination.destinationToName = destinationToName;
-    printDestination.fileNameWithSubPath = fileNameWithSubPath;
-    return printDestination;
   }
 
   public PrintDestination destination(String name, String destinationToName) {
     return destination(name, destinationToName, null);
   }
 
-  public static class PrintCategory {
+  public class PrintCategory {
     private final String name;
 
     private PrintCategory(String name) {
@@ -201,39 +246,48 @@ public class LogRoutingBuilder {
     private Level level;
 
     public PrintCategory level(Level level) {
-      this.level = level;
-      return this;
+      synchronized (sync) {
+        this.level = level;
+        markChanged();
+        return this;
+      }
     }
 
     private final List<String> destinationNameList = new ArrayList<>();
 
     public PrintCategory assignTo(String... destinationName) {
-      OUT:
-      for (String dName : destinationName) {
-        for (String subName : destinationNameList) {
-          if (Objects.equals(dName, subName)) {
-            continue OUT;
+      synchronized (sync) {
+        OUT:
+        for (String dName : destinationName) {
+          for (String subName : destinationNameList) {
+            if (Objects.equals(dName, subName)) {
+              continue OUT;
+            }
           }
+          destinationNameList.add(dName);
+          markChanged();
         }
-        destinationNameList.add(dName);
+        return this;
       }
-      return this;
     }
 
     @SuppressWarnings("unused")
     public PrintCategory deleteAssign(String... destinationName) {
-      Set<String> names = Arrays.stream(destinationName).collect(Collectors.toSet());
-      for (int i = 0; i < destinationNameList.size(); ) {
-        if (names.contains(destinationNameList.get(i))) {
-          destinationNameList.remove(i);
-        } else {
-          i++;
+      synchronized (sync) {
+        Set<String> names = Arrays.stream(destinationName).collect(Collectors.toSet());
+        for (int i = 0; i < destinationNameList.size(); ) {
+          if (names.contains(destinationNameList.get(i))) {
+            destinationNameList.remove(i);
+            markChanged();
+          } else {
+            i++;
+          }
         }
+        return this;
       }
-      return this;
     }
 
-    public void appendInstructionsTo(List<TopInstruction> instructionList) {
+    private void appendInstructionsTo(List<TopInstruction> instructionList) {
       var topInstruction = new TopInstruction(0, true);
       instructionList.add(topInstruction);
       topInstruction.header.parse(0, name == null ? ROOT : CATEGORY + ' ' + name);
@@ -252,15 +306,18 @@ public class LogRoutingBuilder {
   private final List<PrintCategory> printCategoryList = new ArrayList<>();
 
   public PrintCategory category(String name) {
-    for (PrintCategory x : printCategoryList) {
-      if (Objects.equals(name, x.name)) {
+    synchronized (sync) {
+      for (PrintCategory x : printCategoryList) {
+        if (Objects.equals(name, x.name)) {
+          return x;
+        }
+      }
+      {
+        PrintCategory x = new PrintCategory(name);
+        printCategoryList.add(x);
+        markChanged();
         return x;
       }
-    }
-    {
-      PrintCategory x = new PrintCategory(name);
-      printCategoryList.add(x);
-      return x;
     }
   }
 
@@ -268,7 +325,7 @@ public class LogRoutingBuilder {
     return category(null);
   }
 
-  public static class PrintLayout {
+  public class PrintLayout {
     private final String name;
 
     public PrintLayout(String name) {
@@ -278,19 +335,25 @@ public class LogRoutingBuilder {
     private String pattern = null;
 
     public PrintLayout pattern(String pattern) {
-      this.pattern = pattern;
-      return this;
+      synchronized (sync) {
+        this.pattern = pattern;
+        markChanged();
+        return this;
+      }
     }
 
     private String coloredPattern = null;
 
     @SuppressWarnings("UnusedReturnValue")
     public PrintLayout coloredPattern(String coloredPattern) {
-      this.coloredPattern = coloredPattern;
-      return this;
+      synchronized (sync) {
+        this.coloredPattern = coloredPattern;
+        markChanged();
+        return this;
+      }
     }
 
-    public void appendInstructionsTo(List<TopInstruction> instructionList) {
+    private void appendInstructionsTo(List<TopInstruction> instructionList) {
       var topInstruction = new TopInstruction(0, true);
       instructionList.add(topInstruction);
       topInstruction.header.parse(0, LAYOUT + ' ' + name);
@@ -306,15 +369,18 @@ public class LogRoutingBuilder {
   private final List<PrintLayout> printLayoutList = new ArrayList<>();
 
   public PrintLayout layout(String name) {
-    for (PrintLayout x : printLayoutList) {
-      if (Objects.equals(name, x.name)) {
+    synchronized (sync) {
+      for (PrintLayout x : printLayoutList) {
+        if (Objects.equals(name, x.name)) {
+          return x;
+        }
+      }
+      {
+        PrintLayout x = new PrintLayout(name);
+        printLayoutList.add(x);
+        markChanged();
         return x;
       }
-    }
-    {
-      PrintLayout x = new PrintLayout(name);
-      printLayoutList.add(x);
-      return x;
     }
   }
 
@@ -323,29 +389,31 @@ public class LogRoutingBuilder {
   }
 
   public LogRouting build() {
-    List<TopInstruction> instructionList = new ArrayList<>();
+    synchronized (sync) {
+      List<TopInstruction> instructionList = new ArrayList<>();
 
-    for (PrintLayout x : printLayoutList) {
-      x.appendInstructionsTo(instructionList);
+      for (PrintLayout x : printLayoutList) {
+        x.appendInstructionsTo(instructionList);
+      }
+
+      for (PrintDestinationTo x : printDestinationToList) {
+        x.appendInstructionsTo(instructionList);
+      }
+
+      for (PrintDestination x : printDestinationList) {
+        x.appendInstructionsTo(instructionList);
+      }
+
+      for (PrintCategory x : printCategoryList) {
+        x.appendInstructionsTo(instructionList);
+      }
+
+      var routingParser = new TokenParser();
+      routingParser.instructionList.addAll(instructionList);
+      AnalyzerResult analyzerResult = routingParser.analyze();
+      analyzerResult.throwIfErrorExists();
+      return analyzerResult.routing;
     }
-
-    for (PrintDestinationTo x : printDestinationToList) {
-      x.appendInstructionsTo(instructionList);
-    }
-
-    for (PrintDestination x : printDestinationList) {
-      x.appendInstructionsTo(instructionList);
-    }
-
-    for (PrintCategory x : printCategoryList) {
-      x.appendInstructionsTo(instructionList);
-    }
-
-    var routingParser = new TokenParser();
-    routingParser.instructionList.addAll(instructionList);
-    AnalyzerResult analyzerResult = routingParser.analyze();
-    analyzerResult.throwIfErrorExists();
-    return analyzerResult.routing;
   }
 
 }

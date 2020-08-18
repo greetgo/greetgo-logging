@@ -12,6 +12,7 @@ import org.testng.annotations.Test;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class LogReactorTest {
 
@@ -22,12 +23,18 @@ public class LogReactorTest {
 
     String logConfigFileName = testLocker.dir + "/log.config.txt";
 
+    LogRoutingBuilder builder = getLogRoutingBuilder();
+
+    AtomicInteger changeBuilderIndex = new AtomicInteger(1);
+
+    testLocker.newButton("changeBuilder", () -> changeBuilder(changeBuilderIndex.getAndIncrement(), builder));
+
     var reactor = LogReactor
       .builder()
       .applyRouting(this::acceptLogRouting)
       .configFile(ConfigFileToNativeFile.of(Paths.get(logConfigFileName)))
       .errorFile(ConfigFileToNativeFile.of(Paths.get(logConfigFileName + ".errors.txt")))
-      .initRouting(getLogRouting())
+      .routingBuilder(builder)
       .resetPingDelayMillis(500)
       .build();
 
@@ -41,6 +48,17 @@ public class LogReactorTest {
 
   }
 
+  private void changeBuilder(int changeNumber, LogRoutingBuilder builder) {
+    System.out.println("95QgUD4H8P :: changeBuilder " + changeNumber);
+
+    builder.destination("builder" + changeNumber, "to_file", "builders/builder" + changeNumber)
+           .level(Level.INFO);
+
+    builder.category("builder" + changeNumber)
+           .assignTo("builder" + changeNumber)
+           .level(Level.INFO);
+  }
+
   public void acceptLogRouting(LogRouting routing) {
     //noinspection SpellCheckingInspection
     var sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
@@ -52,7 +70,7 @@ public class LogReactorTest {
     System.out.println();
   }
 
-  private LogRouting getLogRouting() {
+  private LogRoutingBuilder getLogRoutingBuilder() {
     var builder = new LogRoutingBuilder();
 
     //noinspection SpellCheckingInspection
@@ -107,6 +125,6 @@ public class LogReactorTest {
            .assignTo("wow")
            .assignTo("CONSOLE")
     ;
-    return builder.build();
+    return builder;
   }
 }

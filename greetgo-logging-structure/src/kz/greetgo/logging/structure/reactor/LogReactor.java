@@ -4,7 +4,9 @@ import kz.greetgo.logging.structure.config.ConfigFile;
 import kz.greetgo.logging.structure.parser.TokenParser;
 import kz.greetgo.logging.structure.routing.AnalyzerResult;
 import kz.greetgo.logging.structure.routing.LogRouting;
+import kz.greetgo.logging.structure.routing.LogRoutingBuilder;
 import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -16,7 +18,7 @@ public class LogReactor {
 
   private final @NonNull ConfigFile configFile;
   private final ConfigFile errorFile;
-  private final LogRouting initRouting;
+  private final LogRoutingBuilder routingBuilder;
   private final @NonNull Consumer<LogRouting> applyRouting;
   private final long resetPingDelayMillis;
 
@@ -31,12 +33,17 @@ public class LogReactor {
     }
   }
 
+  private int routingBuilderChangeCount = 0;
+
   private void update() {
 
     ConfigFile configFile = this.configFile;
 
     if (firstUpdate) {
       firstUpdate = false;
+
+      LogRoutingBuilder routingBuilder = this.routingBuilder;
+      routingBuilderChangeCount = routingBuilder == null ? 0 : routingBuilder.changeCount();
 
       LogRouting fileRouting = new LogRouting();
       String content = configFile.read();
@@ -50,7 +57,8 @@ public class LogReactor {
         if (errorContent == null) {
           fileRouting = analyzerResult.routing;
         } else {
-          LogRouting initRouting = this.initRouting;
+
+          LogRouting initRouting = routingBuilder == null ? null : routingBuilder.build();
           if (initRouting != null) {
             if (!initRouting.isEmpty()) {
               applyRouting.accept(initRouting);
@@ -60,8 +68,8 @@ public class LogReactor {
         }
       }
 
-      LogRouting initRouting = this.initRouting;
-      LogRouting delta = initRouting == null ? new LogRouting() : initRouting.copy().delete(fileRouting);
+      LogRouting routing = routingBuilder == null ? null : routingBuilder.build();
+      LogRouting delta = routing == null ? new LogRouting() : routing.copy().delete(fileRouting);
 
       if (delta.isEmpty()) {
         if (content == null) {
@@ -71,32 +79,7 @@ public class LogReactor {
           savedConfigFileLastModifiedAt = configFile.lastModifiedAt();
         }
       } else {
-
-        StringBuilder sb = new StringBuilder();
-        if (content != null) {
-          sb.append(content);
-        }
-        if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
-          sb.append('\n');
-        }
-
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        //noinspection IfStatementWithIdenticalBranches
-        if (content == null) {
-          sb.append("## \n");
-          sb.append("## Created at ").append(sdf.format(new Date())).append('\n');
-          sb.append("## \n");
-        } else {
-          sb.append("\n");
-          sb.append("## \n");
-          sb.append("## Updated at ").append(sdf.format(new Date())).append('\n');
-          sb.append("## \n");
-        }
-
-        sb.append(delta.serialize());
-
-        configFile.write(sb.toString());
-        savedConfigFileLastModifiedAt = configFile.lastModifiedAt();
+        writeDelta(content, delta);
       }
 
       fileRouting.appendFrom(delta);
@@ -106,37 +89,127 @@ public class LogReactor {
       return;
     }//end of: if (firstUpdate)
 
-    Date lastModifiedAt = configFile.lastModifiedAt();
-    if (lastModifiedAt == null) {
-      return;
-    }
-    String content = configFile.read();
-    if (content == null) {
-      return;
-    }
-    if (savedConfigFileLastModifiedAt == null) {
-      savedConfigFileLastModifiedAt = lastModifiedAt;
+    var fcc = fileContentAndChangeFlag();
+    var rbc = routingBuilderAndChangeFlag();
+
+    //ccf.content == null - это значит что файла нет
+    if (fcc.content == null) {
+      if (rbc.changed) {
+        applyRouting.accept(rbc.routingBuilder.build());
+      }
       return;
     }
 
-    if (lastModifiedAt.equals(savedConfigFileLastModifiedAt)) {
+    if (!rbc.changed && !fcc.changed) {
       return;
+    }
+
+    var parser = new TokenParser();
+    parser.parse(fcc.content);
+    var analyzerResult = parser.analyze();
+    String errorContent = analyzerResult.errorContent();
+    setErrorContent(errorContent);
+    if (errorContent != null) {
+      return;
+    }
+
+    if (!rbc.changed) {
+      applyRouting.accept(analyzerResult.routing);
+      return;
+    }
+
+    LogRouting delta = rbc.routingBuilder.build()
+                                         .delete(analyzerResult.routing);
+
+    if (delta.isEmpty()) {
+      if (fcc.changed) {
+        applyRouting.accept(analyzerResult.routing);
+      }
+      return;
+    }
+
+    writeDelta(fcc.content, delta);
+    analyzerResult.routing.appendFrom(delta);
+    applyRouting.accept(analyzerResult.routing);
+  }
+
+  private void writeDelta(String currentContent, LogRouting delta) {
+    StringBuilder sb = new StringBuilder();
+    if (currentContent != null) {
+      sb.append(currentContent);
+    }
+    if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
+      sb.append('\n');
+    }
+
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    //noinspection IfStatementWithIdenticalBranches
+    if (currentContent == null) {
+      sb.append("## \n");
+      sb.append("## Created at ").append(sdf.format(new Date())).append('\n');
+      sb.append("## \n");
+    } else {
+      sb.append("\n");
+      sb.append("## \n");
+      sb.append("## Updated at ").append(sdf.format(new Date())).append('\n');
+      sb.append("## \n");
+    }
+
+    sb.append(delta.serialize());
+
+    configFile.write(sb.toString());
+    savedConfigFileLastModifiedAt = configFile.lastModifiedAt();
+  }
+
+  @RequiredArgsConstructor
+  private static class ContentAndChangeFlag {
+    final boolean changed;
+    final String content;
+  }
+
+  @RequiredArgsConstructor
+  private static class RoutingBuilderAndChangeFlag {
+    final boolean changed;
+    final LogRoutingBuilder routingBuilder;
+  }
+
+  private @NonNull RoutingBuilderAndChangeFlag routingBuilderAndChangeFlag() {
+    LogRoutingBuilder routingBuilder = this.routingBuilder;
+
+    if (routingBuilder == null) {
+      return new RoutingBuilderAndChangeFlag(false, null);
+    }
+
+    int count = routingBuilder.changeCount();
+    if (routingBuilderChangeCount != count) {
+      routingBuilderChangeCount = count;
+      return new RoutingBuilderAndChangeFlag(true, routingBuilder);
+    }
+
+    return new RoutingBuilderAndChangeFlag(false, routingBuilder);
+  }
+
+  private @NonNull ContentAndChangeFlag fileContentAndChangeFlag() {
+    Date lastModifiedAt = configFile.lastModifiedAt();
+    if (lastModifiedAt == null) {
+      return new ContentAndChangeFlag(false, null);
+    }
+    String content = configFile.read();
+    if (content == null) {
+      return new ContentAndChangeFlag(false, null);
+    }
+    if (savedConfigFileLastModifiedAt == null) {
+      savedConfigFileLastModifiedAt = lastModifiedAt;
+      return new ContentAndChangeFlag(false, content);
+    }
+
+    if (lastModifiedAt.equals(savedConfigFileLastModifiedAt)) {
+      return new ContentAndChangeFlag(false, content);
     }
 
     savedConfigFileLastModifiedAt = lastModifiedAt;
 
-    var parser = new TokenParser();
-    parser.parse(content);
-
-    AnalyzerResult analyzerResult = parser.analyze();
-
-    String errorContent = analyzerResult.errorContent();
-    setErrorContent(errorContent);
-
-    if (errorContent == null) {
-      applyRouting.accept(analyzerResult.routing);
-      return;
-    }
+    return new ContentAndChangeFlag(true, content);
   }
 
   private void appendHelpConfigFile(StringBuilder sb) {
@@ -190,7 +263,7 @@ public class LogReactor {
   public static class LogReactorBuilder {
     private @NonNull ConfigFile configFile;
     private ConfigFile errorFile;
-    private LogRouting initRouting;
+    private LogRoutingBuilder routingBuilder;
     private @NonNull Consumer<LogRouting> applyRouting;
     private long resetPingDelayMillis = 500;
 
@@ -211,8 +284,8 @@ public class LogReactor {
       return this;
     }
 
-    public LogReactorBuilder initRouting(@NonNull LogRouting initRouting) {
-      this.initRouting = initRouting;
+    public LogReactorBuilder routingBuilder(@NonNull LogRoutingBuilder routingBuilder) {
+      this.routingBuilder = routingBuilder;
       return this;
     }
 
@@ -222,24 +295,24 @@ public class LogReactor {
     }
 
     public LogReactor build() {
-      return new LogReactor(configFile, errorFile, initRouting, applyRouting, resetPingDelayMillis);
+      return new LogReactor(configFile, errorFile, routingBuilder, applyRouting, resetPingDelayMillis);
     }
 
     public String toString() {
       return "LogReactor-Builder("
         + "configFile=" + this.configFile
         + ", errorFile=" + this.errorFile
-        + ", initRouting=" + this.initRouting
+        + ", routingBuilder=" + this.routingBuilder
         + ", applyRouting=" + this.applyRouting
         + ")";
     }
   }
 
-  private LogReactor(@NonNull ConfigFile configFile, ConfigFile errorFile, LogRouting initRouting,
+  private LogReactor(@NonNull ConfigFile configFile, ConfigFile errorFile, LogRoutingBuilder routingBuilder,
                      @NonNull Consumer<LogRouting> applyRouting, long resetPingDelayMillis) {
     this.configFile = configFile;
     this.errorFile = errorFile;
-    this.initRouting = initRouting;
+    this.routingBuilder = routingBuilder;
     this.applyRouting = applyRouting;
     this.resetPingDelayMillis = resetPingDelayMillis;
   }

@@ -29,7 +29,7 @@ public class ZookeeperConfigFileFactoryTest {
     ConfigFile logConfig = configFileFactory.getOrCreate("log-config.txt");
     ConfigFile logConfigError = configFileFactory.getOrCreate("log-config.txt.errors.txt");
 
-    var logRouting = getLogRouting();
+    var routingBuilder = getLogRoutingBuilder();
 
     var testLocker = new TestLocker("build/ZookeeperConfigFileFactoryTest");
 
@@ -38,7 +38,7 @@ public class ZookeeperConfigFileFactoryTest {
       .applyRouting(this::acceptLogRouting)
       .configFile(logConfig)
       .errorFile(logConfigError)
-      .initRouting(logRouting)
+      .routingBuilder(routingBuilder)
       .build();
 
     System.out.println("nGeH2InCD3 :: starting reactor...");
@@ -70,7 +70,7 @@ public class ZookeeperConfigFileFactoryTest {
     System.out.println();
   }
 
-  private LogRouting getLogRouting() {
+  private LogRoutingBuilder getLogRoutingBuilder() {
     var builder = new LogRoutingBuilder();
 
     //noinspection SpellCheckingInspection
@@ -128,6 +128,6 @@ public class ZookeeperConfigFileFactoryTest {
            .assignTo("wow")
            .assignTo("CONSOLE")
     ;
-    return builder.build();
+    return builder;
   }
 }
