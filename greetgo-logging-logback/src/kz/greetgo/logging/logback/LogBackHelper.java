@@ -37,6 +37,7 @@ public class LogBackHelper {
   public boolean colored;
   public String logFileExtension = "log";
   public String rollingFileExtension = "log";
+  public int rollingFileMaxWindowSize = 20;
 
   public void apply(LogRouting routing) {
 
@@ -168,7 +169,12 @@ public class LogBackHelper {
     appender.setEncoder(encoder);
     appender.setFile(rollingFile__namePattern(filePrefix));
 
-    var rolling = new FixedWindowRollingPolicy();
+    var rolling = new FixedWindowRollingPolicy() {
+      @Override
+      protected int getMaxWindowSize() {
+        return rollingFileMaxWindowSize;
+      }
+    };
     rolling.setContext(context);
     rolling.setFileNamePattern(rollingFile__rollingNamePattern(filePrefix));
     rolling.setMinIndex(1);
