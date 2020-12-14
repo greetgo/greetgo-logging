@@ -35,8 +35,8 @@ public class LogBackHelper {
   private LoggerContext context;
   public Path logFileRoot;
   public boolean colored;
-  public String logFileExtension = ".log";
-  public String rollingFileExtension = ".log";
+  public String logFileExtension = "log";
+  public String rollingFileExtension = "log";
 
   public void apply(LogRouting routing) {
 
