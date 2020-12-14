@@ -36,7 +36,7 @@ public class LogBackHelper {
   public Path logFileRoot;
   public boolean colored;
   public String logFileExtension = "log";
-  public String rollingFileExtension = "log";
+  public String rollingFileExtension = "log.gz";
   public int rollingFileMaxWindowSize = 20;
 
   public void apply(LogRouting routing) {
