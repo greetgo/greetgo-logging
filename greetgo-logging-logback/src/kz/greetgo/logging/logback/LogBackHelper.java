@@ -35,6 +35,8 @@ public class LogBackHelper {
   private LoggerContext context;
   public Path logFileRoot;
   public boolean colored;
+  public String logFileExtension = ".log";
+  public String rollingFileExtension = ".log";
 
   public void apply(LogRouting routing) {
 
@@ -114,7 +116,7 @@ public class LogBackHelper {
     throw new RuntimeException("Dku6Z5I17m :: Cannot create appender for " + destinationTo.getClass());
   }
 
-  private Appender<ILoggingEvent> createAppender__stderr(Destination destination) {
+  protected Appender<ILoggingEvent> createAppender__stderr(Destination destination) {
 
     PatternLayoutEncoder encoder = createEncoder(requireNonNull(destination.layout));
 
@@ -129,7 +131,7 @@ public class LogBackHelper {
     return consoleAppender;
   }
 
-  private Appender<ILoggingEvent> createAppender__stdout(Destination destination) {
+  protected Appender<ILoggingEvent> createAppender__stdout(Destination destination) {
 
     PatternLayoutEncoder encoder = createEncoder(requireNonNull(destination.layout));
 
@@ -144,8 +146,16 @@ public class LogBackHelper {
     return consoleAppender;
   }
 
-  private Appender<ILoggingEvent> createAppender__rollingFile(Destination destination,
-                                                              DestinationToRollingFile destinationTo) {
+  protected String rollingFile__rollingNamePattern(String filePrefix) {
+    return filePrefix + ".%i." + rollingFileExtension;
+  }
+
+  protected String rollingFile__namePattern(String filePrefix) {
+    return filePrefix + '.' + logFileExtension;
+  }
+
+  protected Appender<ILoggingEvent> createAppender__rollingFile(Destination destination,
+                                                                DestinationToRollingFile destinationTo) {
 
     String filePrefix = logFileRoot.resolve(destination.fileNameWithSubPath).toString();
     String name = destination.name;
@@ -156,11 +166,11 @@ public class LogBackHelper {
     appender.setContext(context);
     appender.setName(name.toUpperCase());
     appender.setEncoder(encoder);
-    appender.setFile(filePrefix + ".log");
+    appender.setFile(rollingFile__namePattern(filePrefix));
 
     var rolling = new FixedWindowRollingPolicy();
     rolling.setContext(context);
-    rolling.setFileNamePattern(filePrefix + ".%i.log");
+    rolling.setFileNamePattern(rollingFile__rollingNamePattern(filePrefix));
     rolling.setMinIndex(1);
     rolling.setMaxIndex(destinationTo.filesCount);
     rolling.setParent(appender);
@@ -178,11 +188,12 @@ public class LogBackHelper {
     return appender;
   }
 
-  private @NotNull PatternLayoutEncoder createEncoder(Layout layout) {
+  protected @NotNull PatternLayoutEncoder createEncoder(Layout layout) {
     var encoder = new PatternLayoutEncoder();
     encoder.setContext(context);
     encoder.setPattern(layout.getPattern(colored));
     encoder.start();
     return encoder;
   }
+
 }

@@ -218,9 +218,7 @@ public class LogReactor {
     sb.append("#\n");
     sb.append("\n");
     sb.append("layout\n");
-    //noinspection SpellCheckingInspection
     sb.append("  pattern : %d{yyyy-MM-dd'T'HH:mm:ss.SSS} %32.32logger{15} Q%mdc{LID} %-5level %msg%n\n");
-    //noinspection SpellCheckingInspection
     sb.append("  colored_pattern : %green(%d{yyyy-MM-dd'T'HH:mm:ss.SSS}) %cyan(%32.32logger{15})" +
                 " Q%mdc{LID} %highlight(%-5level) %msg%n\n");
     sb.append("\n");
